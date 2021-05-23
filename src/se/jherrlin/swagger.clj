@@ -1,6 +1,5 @@
 (ns se.jherrlin.swagger
   (:require [clojure.data.json :as json]
-            [clojure.core :refer [fn]]
             [clojure.spec.alpha :as s]
             [clojure.string :as str :refer [replace]]
             [se.jherrlin.swagger.specs.swagger-v1 :as swagger-v1]
