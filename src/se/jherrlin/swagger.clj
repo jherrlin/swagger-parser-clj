@@ -23,7 +23,9 @@
   (json/read-str json-str :key-fn keyword))
 
 (defn sanitize-url [s]
-  (str/replace s #"^:" ""))
+  (-> s
+      (str/replace #"^:" "/")
+      (str/replace #"^//" "/")))
 
 (defn doc-group-params [xs]
   (reduce (fn [s {:keys [name required description type schema]}]
