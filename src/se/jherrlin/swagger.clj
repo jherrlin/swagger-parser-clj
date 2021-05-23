@@ -1,10 +1,21 @@
 (ns se.jherrlin.swagger
   (:require [clojure.data.json :as json]
             [clojure.spec.alpha :as s]
-            [clojure.string :as str :refer [replace]]
+            [clojure.string :as str]
+            [clojure.pprint :as pprint]
+            [taoensso.timbre :as timbre]
+            [taoensso.timbre.appenders.core :as appenders]
             [se.jherrlin.swagger.specs.swagger-v1 :as swagger-v1]
-            [se.jherrlin.swagger.specs.swagger-v2 :as swagger-v2]))
+            [se.jherrlin.swagger.specs.swagger-v2 :as swagger-v2])
+  (:gen-class))
 
+
+(timbre/merge-config!
+ {:timestamp-opts (assoc
+                   timbre/default-timestamp-opts
+                   :timezone (java.util.TimeZone/getTimeZone "Europe/Stockholm"))
+  :appenders      {:println {:enabled? false} ;; dont print logs to repl
+                   :spit    (appenders/spit-appender {:fname "logs.txt"})}})
 
 (defn json->edn
   "Read JSON file and parse it to EDN."
@@ -12,7 +23,7 @@
   (json/read-str json-str :key-fn keyword))
 
 (defn sanitize-url [s]
-  (replace s #"^:" ""))
+  (str/replace s #"^:" ""))
 
 (defn doc-group-params [xs]
   (reduce (fn [s {:keys [name required description type schema]}]
@@ -48,7 +59,7 @@
   [{:keys [parameters url file-links original-swagger-source summary]}]
   {:pre  [(s/valid? coll? parameters)]
    :post [#(s/valid? string? %)]}
-  (let [url-str (replace url #"^:" "")]
+  (let [url-str (str/replace url #"^:" "")]
     (str "\n"
          (when summary
            (str summary "\n\n"))
@@ -70,8 +81,7 @@
   (let [args (->> parameters
                   (filter (comp #{"query"} :param-type))
                   (mapv (comp symbol :name)))]
-    (if-not (seq args)
-      `(clojure.core/fn [{:keys []}] {})
+    (when (seq args)
       `(clojure.core/fn [{:keys ~args}]
          ~(reduce (fn [m x] (assoc m (keyword x) x)) {} args)))))
 
@@ -82,7 +92,7 @@
   "Generate url-fn from url string."
   [url-str]
   (let [args       (->> (re-seq #"(?i)(\{[a-z]+\})" url-str)
-                        (mapv (comp symbol #(replace % #"\{|\}" "") second)))
+                        (mapv (comp symbol #(str/replace % #"\{|\}" "") second)))
         format-str (str/replace url-str #"(?i)\{[a-z]+\}" "%s")]
     (if-not (seq args)
       `(clojure.core/fn [{:keys []}] ~url-str)
@@ -99,7 +109,7 @@
 
 (defmethod swagger-normalizer :default
   [{:keys [original-swagger-source]}]
-  (throw (Exception. (str "Dont know how to parse this source: " original-swagger-source))))
+  (timbre/error "Dont know how to parse this source: " original-swagger-source))
 
 (defmethod swagger-normalizer ::version2.0
   [{:keys [original-swagger-source] :as swagger-edn}]
@@ -108,8 +118,10 @@
        (mapcat
         (fn [[url http-actions]]
           (map (fn [[http-method {:keys [parameters summary description]}]]
-                 {:url                     (sanitize-url url)
+                 {:id                      (java.util.UUID/randomUUID)
+                  :created-timestamp       (java.util.Date.)
                   :original-swagger-source original-swagger-source
+                  :url                     (sanitize-url url)
                   :http-method             (-> http-method name str/upper-case keyword)
                   :summary                 (or summary description)
                   :parameters              (mapv (fn [{:keys [in name required format description type]}]
@@ -129,8 +141,10 @@
         (fn [{:keys [path operations]}]
           (map
            (fn [{:keys [method summary parameters]}]
-             {:url                     path
+             {:id                      (java.util.UUID/randomUUID)
+              :created-timestamp       (java.util.Date.)
               :original-swagger-source original-swagger-source
+              :url                     path
               :http-method             (-> method str/upper-case keyword)
               :summary                 summary
               :parameters              (mapv (fn [{:keys [paramType description name format]}]
@@ -151,6 +165,11 @@
 (defn read-source [source]
   ((juxt identity slurp) source))
 
+(defn remove-nils
+  "Remove `nil` values from map `m`."
+  [m]
+  (into {} (remove (comp nil? second) m)))
+
 (defn endpoints [swagger-sources]
   (->> swagger-sources
        (map read-source)
@@ -159,4 +178,10 @@
        (map add-url-fn)
        (map add-query-params-fn)
        (map add-all-arguments)
-       (map add-doc-string)))
+       (map add-doc-string)
+       (map remove-nils)
+       (remove nil?)
+       (into [])))
+
+(defn -main [& sources]
+  (pprint/pprint (endpoints sources)))
