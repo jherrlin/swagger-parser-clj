@@ -181,6 +181,7 @@
        (map add-doc-string)
        (map remove-nils)
        (remove nil?)
+       (sort-by :url)
        (into [])))
 
 (defn -main [& sources]
