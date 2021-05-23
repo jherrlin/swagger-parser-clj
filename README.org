@@ -1,0 +1,12 @@
+
+
+
+* Usage
+
+  #+BEGIN_SRC shell :results output code
+    find /home/john/git/ -type f -wholename "*target*swagger*.json" -exec ./parse-swagger-to-clj {} + > swagger-endpoints.edn
+  #+END_SRC
+
+* Resources
+
+  https://github.com/taylorwood/clj.native-image
