@@ -8,12 +8,9 @@
 
 
 (defn json->edn
-  "Read json file and parse it to edn."
+  "Read JSON file and parse it to EDN."
   [json-str]
-  (try
-    (json/read-str json-str :key-fn keyword)
-    (catch Exception e
-      e)))
+  (json/read-str json-str :key-fn keyword))
 
 (defn sanitize-url [s]
   (replace s #"^:" ""))
