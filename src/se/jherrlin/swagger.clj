@@ -57,15 +57,18 @@
 
   Docstring tells what parameters that could be used.
   * indicates that the parameter is required."
-  [{:keys [parameters url file-links original-swagger-source summary]}]
+  [{:keys [parameters url file-links original-swagger-source summary http-method]}]
   {:pre  [(s/valid? coll? parameters)]
    :post [#(s/valid? string? %)]}
   (let [url-str (str/replace url #"^:" "")]
-    (str "\n"
+    (str "Documentation\n"
+         "Endpoint:    " url-str
+         "\n"
+         "HTTP method: " (str/upper-case (name http-method))
+         "\n\n"
          (when summary
-           (str summary "\n\n"))
-         "Docs on url: " url-str
-         "\n\n`*` is required ones\n\n"
+           (str "\n" summary "\n"))
+         "\n`*` is required ones\n"
          (doc-str-path-and-query-params parameters)
          "\n"
          (when (seq file-links)
@@ -73,7 +76,7 @@
             "\n"
             (docs-str-file-links file-links)))
          "\n"
-         (str "Endpoint defined in: \n" original-swagger-source))))
+         (str "Original Swagger source: \n" original-swagger-source))))
 
 (defn add-doc-string [m]
   (assoc m :docstring (doc-string m)))
