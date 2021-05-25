@@ -10,13 +10,6 @@
   (:gen-class))
 
 
-(timbre/merge-config!
- {:timestamp-opts (assoc
-                   timbre/default-timestamp-opts
-                   :timezone (java.util.TimeZone/getTimeZone "Europe/Stockholm"))
-  :appenders      {:println {:enabled? false} ;; dont print logs to repl
-                   :spit    (appenders/spit-appender {:fname "logs.txt"})}})
-
 (defn json->edn
   "Read JSON file and parse it to EDN."
   [json-str]
@@ -52,7 +45,7 @@
                ""
                file-links)))
 
-(defn doc-string
+(defn docstring
   "Convert the parameters into a docstring.
 
   Docstring tells what parameters that could be used.
@@ -61,14 +54,13 @@
   {:pre  [(s/valid? coll? parameters)]
    :post [#(s/valid? string? %)]}
   (let [url-str (str/replace url #"^:" "")]
-    (str "Documentation\n"
-         "Endpoint:    " url-str
+    (str "Endpoint:    " url-str
          "\n"
          "HTTP method: " (str/upper-case (name http-method))
          "\n\n"
          (when summary
            (str "\n" summary "\n"))
-         "\n`*` is required ones\n"
+         "\n`*` is required ones\n\n"
          (doc-str-path-and-query-params parameters)
          "\n"
          (when (seq file-links)
@@ -78,8 +70,8 @@
          "\n"
          (str "Original Swagger source: \n" original-swagger-source))))
 
-(defn add-doc-string [m]
-  (assoc m :docstring (doc-string m)))
+(defn add-docstring [m]
+  (assoc m :docstring (docstring m)))
 
 (defn gen-query-params-fn [parameters]
   (let [args (->> parameters
@@ -182,11 +174,18 @@
        (map add-url-fn)
        (map add-query-params-fn)
        (map add-all-arguments)
-       (map add-doc-string)
+       ;; (map add-docstring)
        (map remove-nils)
        (remove nil?)
        (sort-by :url)
        (into [])))
 
 (defn -main [& sources]
+  (timbre/merge-config!
+   {:timestamp-opts (assoc
+                     timbre/default-timestamp-opts
+                     :timezone (java.util.TimeZone/getTimeZone "Europe/Stockholm"))
+    :appenders      {:println {:enabled? false} ;; dont print logs to repl
+                     :spit    (appenders/spit-appender {:fname "logs.txt"})}})
+
   (pprint/pprint (endpoints sources)))
