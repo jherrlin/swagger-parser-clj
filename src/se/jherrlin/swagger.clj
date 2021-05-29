@@ -95,9 +95,6 @@
       `(clojure.core/fn [{:keys ~args}]
          (clojure.core/apply clojure.core/format ~format-str ~args)))))
 
-(defn add-all-arguments [{:keys [parameters] :as m}]
-  (assoc m :all-arguments (mapv :name parameters)))
-
 (defn add-url-fn [{:keys [url] :as m}]
   (assoc m :url-fn (gen-url-fn url)))
 
@@ -173,7 +170,6 @@
        (mapcat swagger-normalizer)
        (map add-url-fn)
        (map add-query-params-fn)
-       (map add-all-arguments)
        ;; (map add-docstring)
        (map remove-nils)
        (remove nil?)
