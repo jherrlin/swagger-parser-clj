@@ -50,11 +50,13 @@
 
   Docstring tells what parameters that could be used.
   * indicates that the parameter is required."
-  [{:keys [parameters url file-links original-swagger-source summary http-method]}]
+  [{:keys [parameters url file-links original-swagger-source summary http-method deprecated]}]
   {:pre  [(s/valid? coll? parameters)]
    :post [#(s/valid? string? %)]}
   (let [url-str (str/replace url #"^:" "")]
-    (str "Endpoint:    " url-str
+    (str (when deprecated
+           "ENDPOINT IS MARKED AS DEPRECATED!\n\n")
+         "Endpoint:    " url-str
          "\n"
          "HTTP method: " (str/upper-case (name http-method))
          "\n\n"
@@ -110,13 +112,14 @@
        :paths
        (mapcat
         (fn [[url http-actions]]
-          (map (fn [[http-method {:keys [parameters summary description]}]]
+          (map (fn [[http-method {:keys [parameters summary description deprecated]}]]
                  {:id                      (java.util.UUID/randomUUID)
                   :created-timestamp       (java.util.Date.)
                   :original-swagger-source original-swagger-source
                   :url                     (sanitize-url url)
                   :http-method             (-> http-method name str/upper-case keyword)
                   :summary                 (or summary description)
+                  :deprecated              deprecated
                   :parameters              (mapv (fn [{:keys [in name required format description type]}]
                                                    {:param-type  in
                                                     :name        name
@@ -131,7 +134,7 @@
   (->> xs
        :apis
        (mapcat
-        (fn [{:keys [path operations]}]
+        (fn [{:keys [path operations deprecated]}]
           (map
            (fn [{:keys [method summary parameters]}]
              {:id                      (java.util.UUID/randomUUID)
@@ -140,6 +143,7 @@
               :url                     path
               :http-method             (-> method str/upper-case keyword)
               :summary                 summary
+              :deprecated              deprecated
               :parameters              (mapv (fn [{:keys [paramType description name format]}]
                                                {:param-type  paramType
                                                 :description description
