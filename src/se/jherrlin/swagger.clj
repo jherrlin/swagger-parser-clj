@@ -106,6 +106,11 @@
   [{:keys [original-swagger-source]}]
   (timbre/error "Dont know how to parse this source: " original-swagger-source))
 
+(defn remove-nils
+  "Remove `nil` values from map `m`"
+  [m]
+  (into {} (remove (comp nil? second) m)))
+
 (defmethod swagger-normalizer ::version2.0
   [{:keys [original-swagger-source] :as swagger-edn}]
   (->> swagger-edn
@@ -113,20 +118,22 @@
        (mapcat
         (fn [[url http-actions]]
           (map (fn [[http-method {:keys [parameters summary description deprecated]}]]
-                 {:id                      (java.util.UUID/randomUUID)
-                  :created-timestamp       (java.util.Date.)
-                  :original-swagger-source original-swagger-source
-                  :url                     (sanitize-url url)
-                  :http-method             (-> http-method name str/upper-case keyword)
-                  :summary                 (or summary description)
-                  :deprecated              deprecated
-                  :parameters              (mapv (fn [{:keys [in name required format description type]}]
-                                                   {:param-type  in
-                                                    :name        name
-                                                    :required    required
-                                                    :format      type
-                                                    :description description})
-                                                 parameters)})
+                 (remove-nils
+                  {:id                      (java.util.UUID/randomUUID)
+                   :created-timestamp       (java.util.Date.)
+                   :original-swagger-source original-swagger-source
+                   :url                     (sanitize-url url)
+                   :http-method             (-> http-method name str/upper-case keyword)
+                   :summary                 (or summary description)
+                   :deprecated              deprecated
+                   :parameters              (->> parameters
+                                                 (map (fn [{:keys [in name required format description type]}]
+                                                         {:param-type  in
+                                                          :name        name
+                                                          :required    required
+                                                          :format      type
+                                                          :description description}))
+                                                 (mapv remove-nils))}))
                http-actions)))))
 
 (defmethod swagger-normalizer ::version1.2
@@ -137,20 +144,22 @@
         (fn [{:keys [path operations deprecated]}]
           (map
            (fn [{:keys [method summary parameters]}]
-             {:id                      (java.util.UUID/randomUUID)
-              :created-timestamp       (java.util.Date.)
-              :original-swagger-source original-swagger-source
-              :url                     path
-              :http-method             (-> method str/upper-case keyword)
-              :summary                 summary
-              :deprecated              deprecated
-              :parameters              (mapv (fn [{:keys [paramType description name format]}]
-                                               {:param-type  paramType
-                                                :description description
-                                                :name        name
-                                                :format      format
-                                                :required    nil})
-                                             parameters)})
+             (remove-nils
+              {:id                      (java.util.UUID/randomUUID)
+               :created-timestamp       (java.util.Date.)
+               :original-swagger-source original-swagger-source
+               :url                     path
+               :http-method             (-> method str/upper-case keyword)
+               :summary                 summary
+               :deprecated              deprecated
+               :parameters              (->> parameters
+                                             (map (fn [{:keys [paramType description name format]}]
+                                                    {:param-type  paramType
+                                                     :description description
+                                                     :name        name
+                                                     :format      format
+                                                     :required    nil}))
+                                             (mapv remove-nils))}))
            operations)))))
 
 (defn ->swagger-edn [[swagger-source json-str]]
@@ -161,11 +170,6 @@
 
 (defn read-source [source]
   ((juxt identity slurp) source))
-
-(defn remove-nils
-  "Remove `nil` values from map `m`."
-  [m]
-  (into {} (remove (comp nil? second) m)))
 
 (defn endpoints [swagger-sources]
   (->> swagger-sources

@@ -12,16 +12,16 @@
 (s/def ::paramType #{"query" "path" "body" "header"})
 (s/def ::parameter
   (s/keys :req-un [::paramType
-                   ::description
                    ::name]
-          :opt-un [::format]))
+          :opt-un [::format
+                   ::description]))
 
 (s/def ::parameters (s/coll-of ::parameter))
 (s/def ::summary ::non-blank-string)
 (s/def ::method #{"GET" "PUT" "POST" "DELETE"})
 (s/def ::action
-  (s/keys :req-un [::method
-                   ::summary
+  (s/keys :req-un [::method]
+          :opt-un [::summary
                    ::parameters]))
 
 (s/def ::operations (s/coll-of ::action))
