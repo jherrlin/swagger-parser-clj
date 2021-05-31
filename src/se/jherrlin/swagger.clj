@@ -50,7 +50,7 @@
 
   Docstring tells what parameters that could be used.
   * indicates that the parameter is required."
-  [{:keys [parameters url file-links original-swagger-source summary http-method deprecated]}]
+  [{:keys [parameters url file-links original-swagger-source summary http-method deprecated service]}]
   {:pre  [(s/valid? coll? parameters)]
    :post [#(s/valid? string? %)]}
   (let [url-str (str/replace url #"^:" "")]
@@ -59,6 +59,8 @@
          "Endpoint:    " url-str
          "\n"
          "HTTP method: " (str/upper-case (name http-method))
+         "\n"
+         "Service:     " service
          "\n\n"
          (when summary
            (str "\n" summary "\n"))
